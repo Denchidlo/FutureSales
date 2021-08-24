@@ -54,7 +54,7 @@ class ExpandedWindowIterator:
         _max = self._cfg["max"]
         _step = self._cfg["step_size"]
 
-        if min_idx == step == max_idx == None:
+        if _min == _step == _max == None:
             raise ValueError(f"'None' was found in (min_idx, step, max_idx)")
         if dataset[target_key].min() >= _min or dataset[target_key].max() < _max:
             raise ValueError(f"Target value is out of bounds")
@@ -62,7 +62,7 @@ class ExpandedWindowIterator:
         target_extractor = self._cfg["extractor"]
 
         idx = _min
-        while idx < max_idx - step:
+        while idx < _max - _step:
             y_val = target_extractor(idx)
             features = dataset[dataset[target_key] <= idx]
 
@@ -70,16 +70,16 @@ class ExpandedWindowIterator:
 
             idx += _step
 
-        y_val = target_extractor(idx)
+        y_val = target_extractor(idx + 1)
         features = dataset[dataset[target_key] <= idx]
 
         yield idx, features, y_val
 
-        if idx < max_idx:
-            y_val = target_extractor(max_idx)
-            features = dataset[dataset[target_key] <= max_idx]
+        if idx < _max:
+            y_val = target_extractor(_max)
+            features = dataset[dataset[target_key] <= _max]
 
-            yield max_idx, features, y_val
+            yield _max, features, y_val
 
 class EntityIterator:
     """
@@ -99,6 +99,17 @@ class EntityIterator:
         self._idx = idx
 
     def __call__(self, df):
-        idxs = df[self.idx]
+        idxs = df.loc[:, self._idx]
         for unique in idxs.unique():
+            yield unique, df[idxs == unique]
+
+
+class SampleIterator:
+    def __init__(self, idx, **pd_sample_options):
+        self._idx = idx
+        self._sample_options = pd_sample_options
+
+    def __call__(self, df):
+        idxs = df.loc[:, self._idx]
+        for unique in pd.Series(idxs.unique()).sample(**self._sample_options):
             yield unique, df[idxs == unique]
