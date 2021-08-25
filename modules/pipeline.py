@@ -3,23 +3,40 @@ import numpy as np
 import pandas as pd
 
 def get_features(date, train_df):
-    return train_df[train_df.date_block_num == date].set_index(['id', 'date_block_num']).sort_index()
+    return train_df[train_df.window == date].set_index(['id', 'window']).sort_index().drop('index', axis=1)
         
 def get_target(date, target_vector):
-    return target_vector.reset_index()[target_vector.reset_index().date_block_num == date].set_index(['id', 'date_block_num']).sort_index()
+    return target_vector.reset_index()[target_vector.reset_index().window == date].set_index(['id', 'window']).sort_index().drop('index', axis=1)
 
 class RegressionValidator:
+    """
+        Hardcoded for a while
+    """
     def __init__(self, model, *args, **kwargs):
         self.model = model(**kwargs)
         
-    def validate(self, X_features, target_vector, test_target):
-        train_df = X_features
+    def validate(self, cfg, joined_dataset, test_target):
+        """
+            Validate selected model on a dataset
+
+            Input:
+
+            1) 'joined_dataset' has the following format: ['id', 'window', feature_1, ... , target]
+            2) 'test_target': ['id', 'window', 'target']
+            3) 'cfg' is a dictionary containig ('min_window', 'max_window') in keys
+
+
+            Out:
+                - Residual statistics
+        """
+        train_df = joined_dataset.drop(['target'], axis=1)
+        target_vector = joined_dataset.loc[:, ['id', 'window', 'target']]
         
         def get_features(date):
-            return train_df[train_df.date_block_num == date].set_index(['id', 'date_block_num']).sort_index()
+            return train_df[train_df.window == date].set_index(['id', 'window']).sort_index()
         
-        current_date = 23
-        max_date = 32
+        current_date = cfg['min_window']
+        max_date = cfg['max_window']
         
         errors = [
             [], [], []
@@ -42,15 +59,16 @@ class RegressionValidator:
                 predictions = predictions.transpose()
         
             errors[0].append(current_date)
-            assert validation_target.loc[:,0].shape == predictions.shape, f'Shapes are pred:{validation_target.loc[:,0].shape} and truth:{predictions.shape}\nCurrent validation set: {current_date}'
-            errors[1].append(mse(validation_target.loc[:,0].to_list(), predictions))
+            assert validation_target.loc[:,'target'].shape == predictions.shape, f'Shapes are pred:{validation_target.loc[:,"target"].shape} and truth:{predictions.shape}\nCurrent validation set: {current_date}'
+            errors[1].append(mse(validation_target.loc[:,'target'].to_list(), predictions))
             
-            report = pd.DataFrame({'true_values': validation_target.loc[:,0].to_list(), 'predicted': predictions})
+            report = pd.DataFrame({'true_values': validation_target.loc[:,'target'].to_list(), 'predicted': predictions})
             errors[2].append(report)
             
             current_date += 1
         
         return errors
+
 
 class Pipeline:
     
