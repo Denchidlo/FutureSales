@@ -7,74 +7,46 @@ def make_transformer(func, **kwargs):
         return func(serieses, **kwargs)
     return wrapped
 
-
-class FeatureExtractor:
-
-    class _Extractor:
-        def __init__(self, tasks) -> None:
-            self._context = {
-                'tasks': tasks,
-            }
-            self._results = {}
-
-        def fit(self, df):
-            self._context['df'] = df
-            self._results = {}
-
-            for subset in self._context['tasks']['iterator'](df):
-                self._create_serieses()
-                self._extract_features()
-                self._append_to_result()
-
-        def _get_serieses(self, names):
-            for name in names:
-                if name in self._results['serieses']:
-                    return self._results['serieses'][name]
-                else:
-                    return self._context['df'][name]
-
-        def _create_serieses(self):
-            self._results['serieses'] = {}
-            for task_name, handler in self._context['tasks']['serieses'].items():
-                affected_serieses = self._get_serieses(handler['serieses'])
-                self._results['serieses'][task_name] = handler['executor'](*affected_serieses)
+# Applied funcs
+def extract_id_sequences(df, index=None, seq_index=None, target=None, aggregator=None, fill_na=np.NaN):
+    return (
+        df.groupby(index + seq_index)[target]
+        .apply(aggregator)
+        .reset_index()
+        .pivot(
+            index=index, 
+            columns=seq_index, 
+            values=target
+            )
+        .fillna(fill_na))
 
 
-        def _extract_features(self):
-            pass
+def take_subseries(df, columns, new_name):
+    if isinstance(columns, list): 
+        return df.loc[:, columns].rename(dict([zip(columns, new_name)]))
+    else:
+        return df.loc[:, df.columns[columns]].rename(dict(zip(df.columns[columns], new_name)), axis=1)
 
+def diff(series, order, period=1):
+    diff_1 = (series - series.shift(period, axis=1))
+    if order == 1:
+        return diff_1.fillna(0)
+    elif order == 2:
+        return (diff_1 - diff_1.shift(period, axis=1)).fillna(0)
+    else:
+        raise ValueError(f'Order higher than 2 is currently unsupported')
 
-    def __init__(self, subseries_cfg, feature_cfg, entity_iterator) -> None:
-        self._tasks = {
-            'subserieses': self._process_subseries_cfg(subseries_cfg),
-            'features': self._process_feature_cfg(feature_cfg),
-            'iterator': entity_iterator
-        }
+def subset2subset(df, series_transformer, column_names, axis=1):
+    return df.apply(
+        lambda _series: pd.Series(
+            series_transformer(_series), 
+            index=column_names), 
+        axis=1, 
+        result_type='expand')
 
-    @staticmethod
-    def _process_subseries_cfg(self, cfg):
-        translated = {}
-        for task_name, encoded_task in cfg:
-            translated[task_name] = {
-                'executor': make_transformer(FUNC_MAP[encoded_task['func_name']], **encoded_task['params']),
-                'serieses': encoded_task['series_order'],
-            }
-        return translated
-
-    @staticmethod
-    def _process_feature_cfg(self, cfg):
-        translated = {}
-        for task in cfg:
-            translated[task] = {
-                'executor': make_transformer(FUNC_MAP[task['func_name']], **task['params']),
-                'from': task['from'],
-            }
-        return translated
-
-    def __call__(self, df):
-        return self._Extractor(df, self._tasks)
-
-
+def take_acf(series, nlags):
+    from statsmodels.tsa.stattools import acf 
+    return acf(series, nlags=nlags)[1:]
 
 
 def lag(series, period=None, fill_na=None):
