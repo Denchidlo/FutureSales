@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-
+from statsmodels.tsa.stattools import acf 
 
 def make_transformer(func, **kwargs):
     def wrapped(serieses):
@@ -45,7 +45,7 @@ def subset2subset(df, series_transformer, column_names, axis=1):
         result_type='expand')
 
 def take_acf(series, nlags):
-    from statsmodels.tsa.stattools import acf 
+    
     return acf(series, nlags=nlags)[1:]
 
 
