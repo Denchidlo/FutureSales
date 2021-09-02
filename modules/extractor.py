@@ -1,9 +1,4 @@
-# Useful wrapper
-def make_transformer(func, **kwargs):
-    def wrapped(*frames):
-        return func(*frames, **kwargs)
-    return wrapped
-
+from aggregators import *
 
 # Full extraction cycle class 
 class FeatureExtractor():
