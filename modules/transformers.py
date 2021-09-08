@@ -1,6 +1,6 @@
+from statsmodels.tsa.stattools import acf 
 import numpy as np
 import pandas as pd
-from statsmodels.tsa.stattools import acf 
 
 FUNC_MAP = {}
 
@@ -10,18 +10,16 @@ def _register_as_transformer(func):
         return func
     else:
         raise KeyError(f'Unable to register {repr(func)}. Name is already used')
-
-# Useful wrapper
+ 
 def make_transformer(func, **kwargs):
     def wrapped(*frames):
         return func(*frames, **kwargs)
     return wrapped
 
-@_register_as_transformer
 def extract_id_sequences(df, index=None, seq_index=None, target=None, aggregator=None, fill_na=np.NaN):
     return (
         df.groupby(index + seq_index)[target]
-        .apply(aggregator)
+        .progress_apply(aggregator)
         .reset_index()
         .pivot(
             index=index, 
@@ -30,7 +28,6 @@ def extract_id_sequences(df, index=None, seq_index=None, target=None, aggregator
             )
         .fillna(fill_na))
 
-@_register_as_transformer
 def diff(series, order, period=1):
     diff_1 = (series - series.shift(period, axis=1))
     if order == 1:
@@ -40,20 +37,18 @@ def diff(series, order, period=1):
     else:
         raise ValueError(f'Order higher than 2 is currently unsupported')
 
-@_register_as_transformer
 def subset2subset(df, series_transformer, column_names, axis=1):
-    return df.apply(
+    return df.progress_apply(
         lambda _series: pd.Series(
             series_transformer(_series), 
             index=column_names), 
         axis=1, 
         result_type='expand')
 
-@_register_as_transformer
 def take_acf(series, nlags):    
     return acf(series, nlags=nlags)[1:]
 
-@_register_as_transformer
+
 def append_columns(dataset, columns, transformers):
     for column, transformer in zip(columns, transformers):
         dataset[column] = transformer(dataset)

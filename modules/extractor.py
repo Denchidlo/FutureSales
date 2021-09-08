@@ -1,4 +1,4 @@
-from aggregators import *
+from .aggregators import *
 
 # Full extraction cycle class 
 class FeatureExtractor():
@@ -11,9 +11,9 @@ class FeatureExtractor():
             self._results = building_context
             self._index = index
 
-        def fit(self, df, target=None):
+        def fit(self, df_set, target=None):
             self._results['id_subsets'] = {
-                'original': df
+                name: _set for name, _set in df_set.items() 
             }
 
             self._process_tasks()
@@ -38,14 +38,27 @@ class FeatureExtractor():
             self._results = building_context
             self._index = index
 
+        def _get_frames(self, names):
+            try:
+                return [self._results['id_subsets'][name] for name in names]
+            except:
+                raise
+
         def fit(self, df=None, target=None):
             self._results['features'] = {}
             self._results['feature_map'] = {}
+            self._results['all_features'] = []
             
             self._process_tasks()
 
         def _process_tasks(self):
-            pass
+            for task_name, handler in self._context['tasks'].items():
+                affected_serieses = self._get_frames(handler['serieses'])
+                
+                self._results['features'][task_name] = handler['executor'](*affected_serieses)
+                self._results['feature_map'][task_name] = self._results['features'][task_name].columns
+                
+            return self._results['id_subsets']
 
     class _TaskTranslator():
         @staticmethod
@@ -61,10 +74,10 @@ class FeatureExtractor():
         @staticmethod
         def _process_feature_cfg(cfg):
             translated = {}
-            for task in cfg:
-                translated[task] = {
-                    'executor': make_transformer(task['func_name'], **task['params']),
-                    'from': task['from'],
+            for task_name, encoded_task in cfg.items():
+                translated[task_name] = {
+                    'executor': make_transformer(encoded_task['func_name'], **encoded_task['params']),
+                    'serieses': encoded_task['from'],
                 }
             return translated
 
@@ -84,7 +97,13 @@ class FeatureExtractor():
             self._cfg['index']
         )
 
+        aggregation_generator = self._SubframeAggregator(
+            self._cfg['features'],
+            _building_context,
+            self._cfg['index']
+        )
+
         subset_generator.fit(df)
+        aggregation_generator.fit(df)
 
         return _building_context
-        
