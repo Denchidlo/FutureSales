@@ -20,11 +20,11 @@ def take_percentiles(df, percentiles, idx, month, funcs=[]):
 
     _data_responce = None
     for percentile in percentiles:
-        _thresh = df.progress_apply(make_transformer(__thresh, percentile=percentile), axis=1)
+        _thresh = df.apply(make_transformer(__thresh, percentile=percentile), axis=1)
         # print(f'thresh found {_thresh}')
-        _mean = df.progress_apply(make_transformer(__mean, percentile=percentile, idx=idx), axis=1)
+        _mean = df.apply(make_transformer(__mean, percentile=percentile, idx=idx), axis=1)
         # print(f'mean found {_mean}')
-        _last = df.progress_apply(make_transformer(__last, percentile=percentile, idx=idx), axis=1)
+        _last = df.apply(make_transformer(__last, percentile=percentile, idx=idx), axis=1)
         # print(f'last found {_last}')
         _percentile_value = _thresh * (1 - np.divide((month - _last), _mean))
 
@@ -49,11 +49,11 @@ def reorder_columns(df, new_order):
 
 def aggregate_window_serieses(df, funcs, windows, func_names):
     _data_responce = None
-    for window in tqdm_notebook(windows):
+    for window in windows:
         _subset = list(pd.DataFrame(df.iloc[:, -window:].apply(func, axis='columns')).rename({0:f'{func_names[idx]}_win_{window}'}, axis=1) for idx, func in enumerate(funcs))
         _subset = pd.concat(_subset, axis=1) 
         if _data_responce is None:
             _data_responce = _subset
         else:
-            _data_responce = pd.concat([_data_responce, _subset])
+            _data_responce = pd.concat([_data_responce, _subset], axis=1, join='inner')
     return _data_responce

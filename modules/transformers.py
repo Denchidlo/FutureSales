@@ -19,7 +19,7 @@ def make_transformer(func, **kwargs):
 def extract_id_sequences(df, index=None, seq_index=None, target=None, aggregator=None, fill_na=np.NaN):
     return (
         df.groupby(index + seq_index)[target]
-        .progress_apply(aggregator)
+        .apply(aggregator)
         .reset_index()
         .pivot(
             index=index, 
@@ -38,7 +38,7 @@ def diff(series, order, period=1):
         raise ValueError(f'Order higher than 2 is currently unsupported')
 
 def subset2subset(df, series_transformer, column_names, axis=1):
-    return df.progress_apply(
+    return df.apply(
         lambda _series: pd.Series(
             series_transformer(_series), 
             index=column_names), 
