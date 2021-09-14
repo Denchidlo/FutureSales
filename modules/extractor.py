@@ -26,6 +26,7 @@ class FeatureExtractor():
 
         def _process_tasks(self):
             for task_name, handler in self._context['tasks'].items():
+                print(f'Subseries stage: {task_name}')
                 affected_serieses = self._get_frames(handler['serieses'])
                 self._results['id_subsets'][task_name] = handler['executor'](*affected_serieses)
             return self._results['id_subsets']

@@ -4,6 +4,7 @@ def take_subseries(df, columns, new_name):
     if isinstance(columns, list):
         return df.loc[:, columns].rename(dict(zip(columns, new_name)))
     else:
+        
         return df.loc[:, df.columns[columns]].rename(dict(zip(df.columns[columns], new_name)), axis=1)
 
 def take_percentiles(df, percentiles, idx, month, funcs=[]):
