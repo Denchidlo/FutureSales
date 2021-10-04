@@ -1,3 +1,6 @@
+# Credentials and secrets
+credentials.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -12,6 +15,7 @@ tmp
 .vscode
 *.pkl
 deprecated
+.neptune
 
 # Distribution / packaging
 .Python
